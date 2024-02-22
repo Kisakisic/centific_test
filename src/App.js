@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./index.css";
+import { useDebounce } from "use-debounce";
 //yang.li41@centific.com
 export default function App() {
   //  console.log(val);
@@ -23,24 +24,36 @@ export default function App() {
       setTimeout(resolve, delay, result);
     });
   }
-
+  const inputRef = useRef();
   const [inputSearch, setInputSearch] = useState("");
   const [dropdownItems, setDropdownItems] = useState([]);
+  const [debouncedInputValue] = useDebounce(inputSearch, 300);
 
   useEffect(() => {
     if (inputSearch.includes("@")) {
-      console.log(String);
       const searchItem = inputSearch.slice(inputSearch.indexOf("@") + 1);
 
-      // console.log(searchItem);
-      getLabelsAsync(searchItem).then(function (res) {
-        console.log(res);
-        setDropdownItems(res);
-      });
+      getLabelsAsync(searchItem)
+        .then(function (res) {
+          setDropdownItems(res);
+        })
+        .catch(() => {
+          throw new Error("Error fetching data");
+        });
     } else {
       setDropdownItems([]);
     }
-  }, [inputSearch]);
+  }, [debouncedInputValue]);
+
+  const handleKeyPress = (e) => {
+    if (e.code === "Enter" && dropdownItems.length !== 0) {
+      inputRef.current.value =
+        inputRef.current.value.slice(0, inputRef.current.value.indexOf("@")) +
+        dropdownItems[0];
+
+      setDropdownItems([]);
+    }
+  };
 
   return (
     <div className="App">
@@ -72,15 +85,25 @@ export default function App() {
       </p>
       <div>
         <input
+          style={{ display: "block" }}
           type="text"
           id="inputSearch"
+          aria-label="Input search"
           onChange={(e) => setInputSearch(e.target.value)}
+          onKeyDown={handleKeyPress}
+          ref={inputRef}
         />
-        <select id="dropdownItems">
-          {dropdownItems.map((items) => {
+        <select
+          style={{ display: "block" }}
+          id="dropdownItems"
+          aria-label="Dropdown items"
+          aria-labelledby="inputSearch"
+          multiple
+        >
+          {dropdownItems.map((item) => {
             return (
-              <option value={items} key={items}>
-                {items}
+              <option value={item} key={item} aria-label={item}>
+                {item}
               </option>
             );
           })}
